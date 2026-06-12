@@ -1,1 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Project Launcher</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="layout">
+    <div class="content">
+      <div class="placeholder" id="placeholder">
+        <div class="welcome-title">Welcome to My Internship Program</div>
+        <div class="welcome-subtitle">Select a project from the sidebar to get started</div>
+      </div>
+      <iframe id="frame-my-app"></iframe>
+      <iframe id="frame-web-demo"></iframe>
+    </div>
 
+    <div class="sidebar">
+      <h2 class="sidebar-title">Projects</h2>
+      <button id="btn-my-app" onclick="runProject('my-app')">Day-1</button>
+      <button id="btn-web-demo" onclick="runProject('web-demo')">Day-2</button>
+    </div>
+  </div>
+
+  <script>
+    const readyStatus = { 'my-app': false, 'web-demo': false };
+    let activePollName = null;
+
+    function runProject(name) {
+      document.querySelectorAll('.sidebar button').forEach(b => b.classList.remove('active'));
+      document.getElementById('btn-' + name).classList.add('active');
+
+      if (readyStatus[name]) {
+        showFrame(name);
+        return;
+      }
+
+      activePollName = name;
+      fetch('/run/' + name)
+        .then(res => res.json())
+        .then(() => pollUntilReady(name));
+    }
+
+    function showFrame(name) {
+      document.getElementById('placeholder').style.display = 'none';
+      document.querySelectorAll('iframe').forEach(f => f.classList.remove('active'));
+      document.getElementById('frame-' + name).classList.add('active');
+    }
+
+    function pollUntilReady(name) {
+      const interval = setInterval(() => {
+        fetch('/check/' + name)
+          .then(res => res.json())
+          .then(data => {
+            if (data.ready) {
+              clearInterval(interval);
+              const frame = document.getElementById('frame-' + name);
+              frame.src = 'http://localhost:' + data.port;
+              readyStatus[name] = true;
+
+              // Only switch view if user hasn't navigated away to the other project
+              if (activePollName === name) {
+                showFrame(name);
+              }
+            }
+          });
+      }, 1000);
+    }
+  </script>
+</body>
+</html>
